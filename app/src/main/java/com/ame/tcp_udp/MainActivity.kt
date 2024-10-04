@@ -1,29 +1,29 @@
 package com.ame.tcp_udp
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.Delete
@@ -31,8 +31,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -45,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -65,12 +64,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
-import java.io.File
-import java.io.IOException
 
 
 class MainActivity : ComponentActivity() {
@@ -92,11 +90,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting( modifier: Modifier = Modifier) {
+    val BluetoothVector = ImageVector.vectorResource(id = R.drawable.bluetooth_24px)
     Tcp_UdpTheme {
         var selectedItem by remember { mutableIntStateOf(0) }
         val items = listOf( "TCP", "UDP","BlueTooth")
         val iconitems = listOf(Icons.Filled.Home, Icons.AutoMirrored.Filled.ArrowBack,
-            Icons.AutoMirrored.Filled.ArrowForward
+            BluetoothVector
         )
         Scaffold(modifier = Modifier.fillMaxSize(),
 
@@ -127,19 +126,17 @@ fun Greeting( modifier: Modifier = Modifier) {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UDPScreen() {
    DemoSwipeToDismiss(2)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun TCPScreen() {
     DemoSwipeToDismiss(1)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BLUETOOTHScreen(){
     DemoSwipeToDismiss(lable = 3)
@@ -170,7 +167,8 @@ fun DemoSwipeToDismiss(lable: Int,
     var ipList by remember { mutableStateOf(initialIpList) }
     var showDialog by remember { mutableStateOf(false) }
     var ipText by rememberSaveable { mutableStateOf("") }
-    var dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
+    val dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
+    var isTcpClient by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -209,7 +207,10 @@ fun DemoSwipeToDismiss(lable: Int,
                         headlineContent = { Text(text = ip) },
                         leadingContent = {
                             NumberIcon(num = item)
-
+                        },modifier = Modifier.clickable {
+                            val intent = Intent(context, WindowActivity::class.java)
+                            intent.putExtra("IP_ADDRESS", ip)
+                            context.startActivity(intent)
                         }
                     )}
             }
@@ -217,23 +218,37 @@ fun DemoSwipeToDismiss(lable: Int,
         if(showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("确认添加") },
+                title = { Text("请按照格式输入并确定 ") },
                 text = {
-                    TextField(
-                        value = ipText,
-                        onValueChange = {ipText = it },
-                        modifier = Modifier.offset(y = 4.dp,x= (-3).dp),
-                        placeholder = { Text("Input the ip") },
-                    );
-                    Text("是否添加IP地址 ？${ipText}") },
+                    Column {
+                        TextField(
+                            value = ipText,
+                            onValueChange = { ipText = it },modifier = Modifier.offset(y = 4.dp, x = (-3).dp),
+                            placeholder = { if (!isTcpClient) Text("例如:192.168.43.1:5000 ")
+                                            else Text("直接写端口，例如:5000 ")},
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.Center) {
+                            Text("使用Server模式")
+                            Spacer(Modifier.weight(1f))
+                            Switch(
+                                checked = isTcpClient,
+                                onCheckedChange = { isTcpClient = it }
+                            )
+                        }
+                    }
+                },
                 confirmButton = {
                     Button(
-                        onClick = {
-
-                            ipList += ipText
-
+                        onClick = {ipList += ipText
                             showDialog = false
-                            saveIpListToSharedPrefs(ipText,context)
+                            saveIpListToSharedPrefs(ipText, context)
+                            // 根据 isTcpClient 的值执行不同的操作
+                            if (isTcpClient) {
+                                // 使用 TcpClient 模式
+                            } else {
+                                // 使用 TcpServer 模式
+                            }
                         }
                     ) {
                         Text("确认")
@@ -321,29 +336,6 @@ private fun SwipeBox(
 }
 
 
-
-private fun loadIpListFromFile(context: Context): List<String> {
-    // Load the list of IPs from a file
-    return try {
-        val file = File(context.filesDir, "ip_list.txt")
-        if (file.exists()) {
-            file.readLines()
-        } else {
-            emptyList()
-        }
-    } catch (e: IOException) {
-        emptyList()
-    }
-}
-
-private fun saveIpListToFile(ipText: String, context: Context) {
-    try {
-        val file = File(context.filesDir, "ip_list.txt")
-        file.appendText(ipText + "\n")
-    } catch (e: IOException) {
-        // Handle exception
-    }
-}
 private fun loadIpListFromSharedPrefs(context: Context): List<String> {
     val sharedPrefs = context.getSharedPreferences("ip_list", Context.MODE_PRIVATE)
     return sharedPrefs.getStringSet("ips", setOf())?.toList() ?: emptyList()

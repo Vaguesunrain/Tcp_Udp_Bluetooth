@@ -12,11 +12,19 @@ class TcpServer {
     private var reader: BufferedReader? = null
     private var writer: PrintWriter? = null
 
-    fun create(port: Int) {
-        serverSocket = ServerSocket(port)
-        clientSocket = serverSocket!!.accept()
-        reader = BufferedReader(InputStreamReader(clientSocket!!.getInputStream()))
-        writer = PrintWriter(clientSocket!!.getOutputStream(), true)
+    fun create(port: Int): Boolean {
+        try {
+            serverSocket = ServerSocket(port)
+            clientSocket = serverSocket!!.accept()
+            reader = BufferedReader(InputStreamReader(clientSocket!!.getInputStream()))
+            writer = PrintWriter(clientSocket!!.getOutputStream(), true)
+            return true
+        }
+        catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+
     }
 
     fun send(message: String) {
