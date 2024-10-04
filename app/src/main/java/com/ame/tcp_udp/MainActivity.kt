@@ -1,5 +1,6 @@
 package com.ame.tcp_udp
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
@@ -41,13 +41,13 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -63,12 +63,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
+import java.io.File
+import java.io.IOException
 
 
 class MainActivity : ComponentActivity() {
@@ -115,177 +117,33 @@ fun Greeting( modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .padding(innerPadding)) { // 使用Column 包裹内容和底部导航栏
                 when (selectedItem) {
-                    0 -> HomeScreen(Modifier.fillMaxSize()) // 将 Modifier 应用于 HomeScreen
-                    1 -> TCPScreen()
-                    2 -> UDPScreen()
+                    0 -> TCPScreen() // 将 Modifier 应用于 HomeScreen
+                    1 -> UDPScreen()
+                    2 -> BLUETOOTHScreen()
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(modifier: Modifier) {
-    var ipList by remember { mutableStateOf(listOf<String>()) }
-    var showDialog by remember { mutableStateOf(false) }
-    var ipText by rememberSaveable { mutableStateOf("") }
-    val checkedStates = remember { mutableStateMapOf<String, Boolean>() }
-    val dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
-    Scaffold(
-        floatingActionButton = {
-            Row {
-                TextField(
-                    value = ipText,
-                    onValueChange = {ipText = it },
-                    modifier = Modifier.offset(y = 4.dp,x= (-3).dp),
-                    placeholder = { Text("Input the ip") },
-
-                    )
-                Spacer(modifier = Modifier.width(16.dp))
-                FloatingActionButton(
-                    modifier = Modifier.offset(y = 4.dp),
-                    onClick = {showDialog=true/* do something */ },
-                    containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
-                    elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
-                ) {
-                    Icon(Icons.Filled.Add, "Localized description")
-                }
-            }
-        }
-
-    ) {padding->
-        LazyColumn(
-            contentPadding = padding,
-            ) {
-            items(ipList.size) { index ->
-                val ip = ipList[index]
-                val stateip = dismissState.getOrPut(ip){ rememberSwipeToDismissBoxState()}
-                    SwipeToDismissBox(
-                        state =stateip ,
-                        enableDismissFromStartToEnd = false,
-                        backgroundContent = {
-                            val color by animateColorAsState(
-                                when (dismissState[ip]?.dismissDirection) {
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
-                                    else -> Color.LightGray
-                                },
-                                finishedListener = {
-                                    targetValue ->
-                                    when(targetValue){
-                                        Color.Red -> {
-                                            ipList = ipList.filter { it != ip }
-                                            dismissState.remove(ip)
-                                        }
-                                        else -> {}
-                                    }
-                                }
-                            )
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(color))
-                        }
-                    ) {
-                        Card(Modifier.size(width = Int.MAX_VALUE.dp, height = 100.dp),
-                            shape = RoundedCornerShape(0)
-                        ) {
-                            Row (
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                NumberIcon(num = index)
-                                Text(text = ipList[index] ,style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(start =20.dp, end = 100.dp)
-                                )
-                                Spacer(modifier = modifier.width(80.dp))
-                                Checkbox(
-                                    checked = checkedStates.getOrDefault(ip, false),
-                                    onCheckedChange = { isChecked ->
-                                        checkedStates[ip] = isChecked
-                                    }
-                                )
-
-                            }
-                            Box(Modifier.fillMaxSize()) { Text(" ", Modifier.align(Alignment.Center)) }
-                        }
-                    }
-                when(dismissState[ip]?.dismissDirection){
-                    SwipeToDismissBoxValue.EndToStart -> {
-
-                        ipList = ipList.filter { it != ip }
-                        dismissState.remove(ip)
-                    }
-                    else -> {}
-                }
-            }
-        }
-        if(showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text("确认添加") },
-                text = { Text("是否添加IP地址 ？${ipText}") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            ipList += ipText
-                            showDialog = false
-                        }
-                    ) {
-                        Text("确认")
-                    }
-                },
-                dismissButton = {
-                    Button(
-                        onClick = { showDialog = false }
-                    ) {
-                        Text("取消")
-                    }
-                }
-            )
-        }
-    }
-    Text(text = "Home")
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UDPScreen() {
-    val dismissState = rememberSwipeToDismissBoxState()
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            val color by
-            animateColorAsState(
-                when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.Settled -> Color.LightGray
-                    SwipeToDismissBoxValue.StartToEnd -> Color.Green
-                    SwipeToDismissBoxValue.EndToStart -> Color.Red
-                }, label = ""
-            )
-            println(dismissState.targetValue)
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(color))
-        }
-
-    ) {
-        OutlinedCard(shape = RectangleShape) {
-            ListItem(
-                headlineContent = { Text("Cupcake") },
-                supportingContent = { Text("Swipe me left or right!") }
-            )
-        }
-    }
+   DemoSwipeToDismiss(2)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TCPScreen() {
-    Text(text = "dafafaf")
-    DemoSwipeToDismiss()
+    DemoSwipeToDismiss(1)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BLUETOOTHScreen(){
+    DemoSwipeToDismiss(lable = 3)
+}
 @Composable
 fun NumberIcon(num:Int){
     Box (modifier = Modifier
@@ -302,44 +160,96 @@ fun NumberIcon(num:Int){
     }
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DemoSwipeToDismiss(
-    modifier: Modifier = Modifier
+fun DemoSwipeToDismiss(lable: Int,
+                       modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val initialIpList = loadIpListFromSharedPrefs(LocalContext.current)
+    var ipList by remember { mutableStateOf(initialIpList) }
+    var showDialog by remember { mutableStateOf(false) }
+    var ipText by rememberSaveable { mutableStateOf("") }
+    var dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
 
-    var ipList by remember { mutableStateOf(listOf<String>("123313","131313451","13131414","adwdad","edqadada")) }
-    val dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
-    LazyColumn(modifier = modifier) {
-        items(ipList.size) { item ->
-            val ip = ipList[item]
-            Log.i("debug",ipList[item]+"   "+item.toString())
-            SwipeBox(
-                swipeState = dismissState.getOrPut(ip){ rememberSwipeToDismissBoxState()},
-                onDelete = {
-                    Log.i("debug_", item.toString())
-                    ipList = ipList.filter { it != ip }
-                },
-                onEdit = { },
-//                modifier = Modifier.animateItemPlacement()
+    Scaffold(
+        topBar = {
+            // Add your TopAppBar content here
+            TopAppBar(
+                title = { Text("Swipe to Dismiss Demo") }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                modifier = Modifier.offset(y = 4.dp),
+                onClick = {showDialog=true/* do something */ },
+                containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
+                elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
             ) {
-
-                ListItem(headlineContent = { Text(text = "Headline text $ip") },
-                    supportingContent = { Text(text = "Supporting text $ip") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.AccountBox,
-                            contentDescription = null
-                        )
-                    }
-                )
+                Icon(Icons.Filled.Add, "Localized description")
             }
+        }
+    ) { innerPadding -> // Add inner padding for the content
+        LazyColumn(modifier = modifier.padding(innerPadding)) {
+            items(ipList.size) { item ->
+                val ip = ipList[item]
+                Log.i("debug", ipList[item] + "   " + item.toString())
+                SwipeBox(
+                    swipeState = dismissState.getOrPut(ip) { rememberSwipeToDismissBoxState() },
+                    onDelete = {
+                        Log.i("debug_", item.toString())
+                        ipList = ipList.filter { it != ip }
+                        removeIpFromSharedPrefs(ip,context)
+                        dismissState.remove(ip)
+                    },
+                    onEdit = { },
+                    //                modifier = Modifier.animateItemPlacement()
+                ) {
+                    ListItem(
+                        headlineContent = { Text(text = ip) },
+                        leadingContent = {
+                            NumberIcon(num = item)
+
+                        }
+                    )}
+            }
+        }
+        if(showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("确认添加") },
+                text = {
+                    TextField(
+                        value = ipText,
+                        onValueChange = {ipText = it },
+                        modifier = Modifier.offset(y = 4.dp,x= (-3).dp),
+                        placeholder = { Text("Input the ip") },
+                    );
+                    Text("是否添加IP地址 ？${ipText}") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+
+                            ipList += ipText
+
+                            showDialog = false
+                            saveIpListToSharedPrefs(ipText,context)
+                        }
+                    ) {
+                        Text("确认")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = { showDialog = false }
+                    ) {
+                        Text("取消")
+                    }
+                }
+            )
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeBox(
@@ -399,22 +309,65 @@ private fun SwipeBox(
         SwipeToDismissBoxValue.EndToStart -> {
             onDelete()
         }
-
         SwipeToDismissBoxValue.StartToEnd -> {
             LaunchedEffect(swipeState) {
                 onEdit()
                 swipeState.snapTo(SwipeToDismissBoxValue.Settled)
             }
         }
-
         SwipeToDismissBoxValue.Settled -> {
         }
     }
 }
 
+
+
+private fun loadIpListFromFile(context: Context): List<String> {
+    // Load the list of IPs from a file
+    return try {
+        val file = File(context.filesDir, "ip_list.txt")
+        if (file.exists()) {
+            file.readLines()
+        } else {
+            emptyList()
+        }
+    } catch (e: IOException) {
+        emptyList()
+    }
+}
+
+private fun saveIpListToFile(ipText: String, context: Context) {
+    try {
+        val file = File(context.filesDir, "ip_list.txt")
+        file.appendText(ipText + "\n")
+    } catch (e: IOException) {
+        // Handle exception
+    }
+}
+private fun loadIpListFromSharedPrefs(context: Context): List<String> {
+    val sharedPrefs = context.getSharedPreferences("ip_list", Context.MODE_PRIVATE)
+    return sharedPrefs.getStringSet("ips", setOf())?.toList() ?: emptyList()
+}
+
+private fun saveIpListToSharedPrefs(ipText: String, context: Context) {
+    val sharedPrefs = context.getSharedPreferences("ip_list", Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    val ips = sharedPrefs.getStringSet("ips", setOf())?.toMutableSet() ?: mutableSetOf()
+    ips.add(ipText)
+    editor.putStringSet("ips", ips)
+    editor.apply()
+}
+private fun removeIpFromSharedPrefs(ipText: String, context: Context) {
+    val sharedPrefs = context.getSharedPreferences("ip_list", Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    val ips= sharedPrefs.getStringSet("ips", setOf())?.toMutableSet() ?: mutableSetOf()
+    ips.remove(ipText)
+    editor.putStringSet("ips", ips)
+    editor.apply()
+}
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
-    DemoSwipeToDismiss()
+    DemoSwipeToDismiss(1)
 
 }
