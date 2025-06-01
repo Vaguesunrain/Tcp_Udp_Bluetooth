@@ -202,7 +202,7 @@ fun DemoSwipeToDismiss(lable: Int,
         LazyColumn(modifier = modifier.padding(innerPadding)) {
             items(ipList.size) { item ->
                 val ip = ipList[item]
-                Log.i("debug", ipList[item] + "   " + item.toString())
+//                Log.i("debug", ipList[item] + "   " + item.toString())
                 SwipeBox(
                     swipeState = dismissState.getOrPut(ip) { rememberSwipeToDismissBoxState() },
                     onDelete = {
@@ -220,6 +220,7 @@ fun DemoSwipeToDismiss(lable: Int,
                             NumberIcon(num = item)
                         },modifier = Modifier.clickable {
                             val intent = Intent(context, WindowActivity::class.java)
+                            Log.i("turn" ,ip)
                             intent.putExtra("IP_ADDRESS", ip)
                             context.startActivity(intent)
                         }
@@ -273,8 +274,8 @@ fun DemoSwipeToDismiss(lable: Int,
                         onClick = {
                             showDialog = false
                             if (isTcpClient) {
-                                ipList += "CLIENT $ipText:$portText"
-                                saveIpListToSharedPrefs("CLIENT $ipText:$portText", context)
+                                ipList += "CLIENT  $ipText:$portText"
+                                saveIpListToSharedPrefs("CLIENT  $ipText:$portText", context)
                             }
                             else
                             {
