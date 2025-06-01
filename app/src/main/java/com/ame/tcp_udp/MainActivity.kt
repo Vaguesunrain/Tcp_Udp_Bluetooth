@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -65,6 +66,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -167,6 +170,7 @@ fun DemoSwipeToDismiss(lable: Int,
     var ipList by remember { mutableStateOf(initialIpList) }
     var showDialog by remember { mutableStateOf(false) }
     var ipText by rememberSaveable { mutableStateOf("") }
+    var portText by rememberSaveable { mutableStateOf("") }
     val dismissState = remember { mutableStateMapOf<String, SwipeToDismissBoxState>() }
     var isTcpClient by remember { mutableStateOf(true) }
 
@@ -174,7 +178,14 @@ fun DemoSwipeToDismiss(lable: Int,
         topBar = {
             // Add your TopAppBar content here
             TopAppBar(
-                title = { Text("Swipe to Dismiss Demo") }
+                title = {
+                    when (lable) {
+                        1 -> Text("TCP Demo")
+                        2 -> Text("UDP Demo")
+                        3 -> Text("Bluetooth Demo")
+                        else -> Text("Swipe to Dismiss Demo")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -221,15 +232,34 @@ fun DemoSwipeToDismiss(lable: Int,
                 title = { Text("请按照格式输入并确定 ") },
                 text = {
                     Column {
+                        if(isTcpClient){
+                            TextField(
+                                value = ipText,
+                                singleLine = true, // 确保是单行输入
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Uri, // IP 地址通常用 Uri 类型键盘体验更好
+                                    imeAction = ImeAction.Done // 将回车键设置为“完成”
+                                ),
+                                onValueChange = { newValue -> ipText = newValue },modifier = Modifier.offset(y = 4.dp, x = (-3).dp),
+                                placeholder = {  Text("Please enter ip") },
+                            )
+                        }
                         TextField(
-                            value = ipText,
-                            onValueChange = { ipText = it },modifier = Modifier.offset(y = 4.dp, x = (-3).dp),
-                            placeholder = { if (!isTcpClient) Text("例如:192.168.43.1:5000 ")
-                                            else Text("直接写端口，例如:5000 ")},
+                            value = portText,
+                            singleLine = true, // 确保是单行输入
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number, // 端口号通常是数字
+                                imeAction = ImeAction.Done // 将回车键设置为“完成”
+                            ),
+                            onValueChange = { newValue -> portText = newValue },modifier = Modifier.offset(y = 4.dp, x = (-3).dp),
+                            placeholder = {  Text("Please enter port")},
                         )
                         Spacer(Modifier.height(5.dp))
                         Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.Center) {
-                            Text("使用Server模式")
+                            when(isTcpClient){
+                                true -> Text("Now is Client")
+                                else -> Text("Now is Server")
+                            }
                             Spacer(Modifier.weight(1f))
                             Switch(
                                 checked = isTcpClient,
@@ -240,15 +270,19 @@ fun DemoSwipeToDismiss(lable: Int,
                 },
                 confirmButton = {
                     Button(
-                        onClick = {ipList += ipText
+                        onClick = {
                             showDialog = false
-                            saveIpListToSharedPrefs(ipText, context)
-                            // 根据 isTcpClient 的值执行不同的操作
                             if (isTcpClient) {
-                                // 使用 TcpClient 模式
-                            } else {
-                                // 使用 TcpServer 模式
+                                ipList += "CLIENT $ipText:$portText"
+                                saveIpListToSharedPrefs("CLIENT $ipText:$portText", context)
                             }
+                            else
+                            {
+                                ipList += "SERVER  $portText"
+                                saveIpListToSharedPrefs("SERVER  $portText", context)
+                            }
+
+
                         }
                     ) {
                         Text("确认")
