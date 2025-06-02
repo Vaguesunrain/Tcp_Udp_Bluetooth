@@ -6,13 +6,13 @@ import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
 
-class TcpServer {
+class TcpServer :SocketOperations {
     private var serverSocket: ServerSocket? = null
     private var clientSocket: Socket? = null
     private var reader: BufferedReader? = null
     private var writer: PrintWriter? = null
 
-    fun create(port: Int): Boolean {
+    override fun create(ip:String, port: Int): Boolean {
         try {
             serverSocket = ServerSocket(port)
             clientSocket = serverSocket!!.accept()
@@ -27,18 +27,22 @@ class TcpServer {
 
     }
 
-    fun send(message: String) {
-        writer!!.println(message)
+    override fun send(data: String) :Boolean{
+        writer!!.println(data)
+        return  true
     }
 
-    fun receive(): String {
+    override fun receive(): String {
         return reader!!.readLine()
     }
 
-    fun close() {
+    override fun close() {
         reader!!.close()
         writer!!.close()
         clientSocket!!.close()
         serverSocket!!.close()
+    }
+    override fun isConnected(): Boolean {
+        return true
     }
 }
