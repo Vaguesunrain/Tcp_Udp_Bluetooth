@@ -70,7 +70,7 @@ class TcpClient :SocketOperations{
     }
 
     override fun close() {
-        Log.i("get","shutdwon")
+        Log.i("get","shutdown")
         writer?.close()
         reader?.close()
         socket?.close()
@@ -78,4 +78,9 @@ class TcpClient :SocketOperations{
     override fun isConnected(): Boolean {
         return socket != null && socket!!.isConnected && !socket!!.isClosed
     }
+    override fun waitConnect(): String {
+        return "OK"
+    }
 }
+
+

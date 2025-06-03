@@ -124,12 +124,86 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
             var connectState by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
             var receiveJob by remember { mutableStateOf<Job?>(null) }
+            var serverJob by remember { mutableStateOf<Job?>(null) }
             Row {
                 Column {
                         Text(text = "Local IP is $theIp ")
                         Text(text = "Port is $thePort")
                 }
                 Spacer(modifier.width(70.dp))
+                if(SerOrClient){
+                   Button(onClick = {
+                       if (!connectState){
+                           serverJob?.cancel()
+                           serverJob = scope.launch {
+                               val success = withContext(Dispatchers.IO) {
+                                   body.create(theIp, thePort)
+                               }
+                               if(success)
+                                   connectState = true
+                               outerLoop@ while (success&&connectState) {
+
+                                   messagesList.add("SYSTEM:Server is open, wait client connecting")
+                                   val linkMessage = withContext(Dispatchers.IO) {
+                                       body.waitConnect()
+                                   }
+                                   if (linkMessage != "error") {
+                                       messagesList.add("SYSTEM: "+linkMessage + "is connecting")
+                                   } else {
+                                       messagesList.add("SYSTEM:Someone tried to connect, but failed")
+                                   }
+                                   scope.launch(Dispatchers.IO) { // Launch a dedicated reader coroutine on IO thread
+                                       try {
+                                           while (isActive) {
+                                               val messageFromClient = body.receive() // This is a blocking network call
+
+                                               if (messageFromClient != null) {
+
+                                                   withContext(Dispatchers.Main) {
+                                                       messagesList.add("Client: $messageFromClient")
+                                                   }
+                                               } else {
+                                                   withContext(Dispatchers.Main) {
+                                                       messagesList.add("SYSTEM:Client disconnected gracefully.")
+                                                   }
+                                                   break
+                                               }
+                                           }
+                                       } catch (e: java.io.IOException) {
+                                           withContext(Dispatchers.Main) {
+                                               messagesList.add("Client connection error/closed: ${e.message}")
+                                           }
+                                       } catch (e: Exception) {
+                                           withContext(Dispatchers.Main) {
+                                               messagesList.add("Error reading from client: ${e.message}")
+                                           }
+                                       } finally {
+                                           withContext(Dispatchers.Main) {
+                                               messagesList.add("Stopped reading from client.")
+                                           }
+                                       }
+                                   }
+                               }
+                           }
+                       }
+                       else{
+                           connectState = false
+                           serverJob?.cancel() // 取消正在进行的接收任务
+                           scope.launch(Dispatchers.IO) { // 在 IO 线程关闭
+                               body.close()
+                               messagesList.add("SYSTEM:Cancel the Server")
+                           }
+                       }
+                   }) {
+                       Text(
+                           if (connectState)
+                               "Disconnect"
+                           else
+                               "Connect"
+                       )
+                   }
+                }
+                else
                 Button(onClick = {
                     if (!connectState){
                         receiveJob?.cancel()
@@ -142,12 +216,9 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                                 receiveJob = launch(Dispatchers.IO) {
                                     try {
                                         while (isActive && body.isConnected()) { // isActive 检查协程是否还在活动
-                                            Log.i("get","${body.isConnected()}")
                                             val receivedMessage = body.receive() // 这是阻塞调用
-
                                             if (receivedMessage != null) {
                                                 withContext(Dispatchers.Main) { // 切换回主线程更新 UI
-                                                    Log.i("get","$receivedMessage")
                                                     messagesList.add("Server: $receivedMessage")
                                                 }
                                             } else {

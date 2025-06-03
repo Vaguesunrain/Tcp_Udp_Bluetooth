@@ -6,6 +6,7 @@ interface SocketOperations {
     fun send(data: String): Boolean
     fun receive(): String?
     fun close()
+    fun waitConnect(): String
     abstract fun isConnected(): Boolean
     // 你可以添加其他所有共有的方法
 }
