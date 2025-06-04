@@ -219,9 +219,20 @@ fun DemoSwipeToDismiss(lable: Int,
                         leadingContent = {
                             NumberIcon(num = item)
                         },modifier = Modifier.clickable {
-                            val intent = Intent(context, WindowActivity::class.java)
+                            var intent: Intent? = null
+                            when(lable) {
+                                1 -> {
+                                    intent = Intent(context, WindowActivity::class.java)
+                                }
+                                2 ->{
+                                    intent =  Intent(context, ActivityUdp::class.java)
+                                }
+                                3 ->{
+                                    intent = Intent(context, ActivityUdp::class.java)
+                                }
+                            }
                             Log.i("turn" ,ip)
-                            intent.putExtra("IP_ADDRESS", ip)
+                            intent?.putExtra("IP_ADDRESS", ip)
                             context.startActivity(intent)
                         }
                     )}
