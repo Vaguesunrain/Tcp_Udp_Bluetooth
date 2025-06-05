@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
@@ -105,6 +104,8 @@ fun WorkUIUdp(modifier: Modifier = Modifier, serOrClient: Boolean, theIp: String
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val body = remember{ UdpSocket() }
+            var destinationIp by remember { mutableStateOf("null") }
+            var destinationPort by remember { mutableIntStateOf(0) }
             var sendMassage by remember { mutableStateOf("") }
             val messagesList = remember { mutableStateListOf<String>() }
             var connectState by remember { mutableStateOf(false) }
@@ -130,10 +131,9 @@ fun WorkUIUdp(modifier: Modifier = Modifier, serOrClient: Boolean, theIp: String
                                         scope.launch(Dispatchers.Main) { // 或直接添加，mutableStateListOf是线程安全的
                                             messagesList.add("From ${address.hostAddress}:$port: $message")
                                             // 如果是服务器，可能需要保存最新的客户端地址用于回复
-                                            if (serOrClient) {
-                                                // Consider storing address and port if you want to "reply" via send button
-                                                // e.g., lastClientAddress = address; lastClientPort = port;
-                                            }
+                                            destinationIp = address.hostAddress?.toString() ?: "null"
+                                            destinationPort = port
+
                                         }
                                     }
                                     body.receive() // 开始接收
@@ -175,10 +175,15 @@ fun WorkUIUdp(modifier: Modifier = Modifier, serOrClient: Boolean, theIp: String
                 Button(modifier= Modifier
                     .width(120.dp)
                     .height(50.dp), onClick = {
-                    Log.i("get", sendMassage)
-                    if (connectState ){
-                        Log.i("get","haha11")
+                    if (connectState && (!serOrClient)){
+                        
                         body.send(sendMassage, InetAddress.getByName(theIp), thePort)
+                        messagesList.add("Me: $sendMassage")
+                    }
+                    else if (connectState && serOrClient){
+                        Log.i("haha","ok")
+                        body.send(sendMassage, InetAddress.getByName(destinationIp), destinationPort)
+                        Log.i("haha","nook")
                         messagesList.add("Me: $sendMassage")
                     }
                     else{
@@ -193,7 +198,6 @@ fun WorkUIUdp(modifier: Modifier = Modifier, serOrClient: Boolean, theIp: String
                     .height(50.dp), onClick = { /*TODO*/ }) {
                     Text(text = "Save text")
                 }
-                Text(text = "$connectState ")
             }
         }
     }

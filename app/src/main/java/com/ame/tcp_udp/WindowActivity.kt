@@ -292,26 +292,17 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                 Button(modifier= Modifier
                     .width(120.dp)
                     .height(50.dp), onClick = {
-                    Log.i("get", sendMassage)
-
-                        Log.i("get","$connectState")
-                    Log.i("get", body.isConnected().toString())
                         if (connectState ){
-                            Log.i("get","haha11")
                             val messageToSendCurrent = sendMassage // 捕获当前值，避免协程中值改变
                             if (messageToSendCurrent.isNotBlank()) {
-                                Log.i("get","haha111")
                                 scope.launch { // 启动协程
-                                    Log.i("get", "Attempting to send: $messageToSendCurrent")
                                     val success = withContext(Dispatchers.IO) { // 切换到 IO 线程执行网络操作
                                         body.send(messageToSendCurrent)
                                     }
                                     // 操作完成后，回到主线程更新 UI (如果需要)
                                     withContext(Dispatchers.Main) {
                                         if (success) {
-                                            Log.i("get", "Successfully sent: $messageToSendCurrent")
                                             messagesList.add("Me: $messageToSendCurrent") // 假设 messagesList 是 mutableStateListOf
-//                                            sendMassage = "" // 清空输入框
                                         } else {
                                             Log.i("get", "Failed to send message: $messageToSendCurrent")
                                         }
@@ -335,7 +326,6 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                     Text(text = "Save text")
                 }
             }
-            Text(text = "$connectState and ${body.isConnected()}")
         }
     }
 }
@@ -394,8 +384,6 @@ fun getLocalIpAddress(context: Context): String? {
             )
         }
     } else if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-        Log.i("hihi","4")
-        // Connected to mobile data, iterate through network interfaces
         try {
             val networkInterfaces = NetworkInterface.getNetworkInterfaces()
             while (networkInterfaces.hasMoreElements()) {
@@ -412,8 +400,6 @@ fun getLocalIpAddress(context: Context): String? {
             Log.e("IP Address", "Error getting mobile IP address", e)
         }
     }
-    Log.i("hihi", "Errmobile IP address")
-    // Fallback: Iterate through all network interfaces
     try {
         val networkInterfaces = NetworkInterface.getNetworkInterfaces()
         while (networkInterfaces.hasMoreElements()) {
