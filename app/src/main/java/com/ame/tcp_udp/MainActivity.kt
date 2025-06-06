@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -68,11 +72,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
-
+import android.Manifest
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,7 +129,9 @@ fun Greeting( modifier: Modifier = Modifier) {
         ) { innerPadding ->
             Column(modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)) { // 使用Column 包裹内容和底部导航栏
+                .padding(innerPadding) ,
+//                horizontalAlignment = Alignment.CenterHorizontally
+            ) { // 使用Column 包裹内容和底部导航栏
                 when (selectedItem) {
                     0 -> TCPScreen() // 将 Modifier 应用于 HomeScreen
                     1 -> UDPScreen()
@@ -142,7 +156,36 @@ fun TCPScreen() {
 
 @Composable
 fun BLUETOOTHScreen(){
-    DemoSwipeToDismiss(lable = 3)
+    Spacer(Modifier.height(10.dp))
+    Text( text = "BlueTooth beta" , fontSize = 30.sp)
+    BluetoothDeviceList()
+//    Column(Modifier.wrapContentSize(Alignment.Center).fillMaxWidth(1f)
+//        ,horizontalAlignment = Alignment.CenterHorizontally){
+//        Card(modifier = Modifier
+//            .fillMaxWidth(0.8f) // 设置Card宽度为父容器的80%
+//            .fillMaxHeight(0.3f) // 设置Card高度为父容器的30%
+//            ) {
+//            Box(
+//                modifier = Modifier.fillMaxSize(),
+//                contentAlignment = Alignment.Center // 让Box内容居中
+//            ) {
+//                Button(
+//                    onClick = { /*TODO*/ },
+//                    modifier = Modifier
+//                        .fillMaxWidth(0.7f) // 设置Button宽度为Card的70%
+//                        .fillMaxHeight(0.5f) // 设置Button高度为Card的50%
+//                ) {
+//                    Text(text = "BR/EDR")
+//                }
+//            }
+//        }
+//        Card() {
+//            Button(onClick = { /*TODO*/ }) {
+//                Text(text = "BLE")
+//            }
+//        }
+//    }
+
 }
 @Composable
 fun NumberIcon(num:Int){
@@ -202,7 +245,6 @@ fun DemoSwipeToDismiss(lable: Int,
         LazyColumn(modifier = modifier.padding(innerPadding)) {
             items(ipList.size) { item ->
                 val ip = ipList[item]
-//                Log.i("debug", ipList[item] + "   " + item.toString())
                 SwipeBox(
                     swipeState = dismissState.getOrPut(ip) { rememberSwipeToDismissBoxState() },
                     onDelete = {
@@ -212,7 +254,6 @@ fun DemoSwipeToDismiss(lable: Int,
                         dismissState.remove(ip)
                     },
                     onEdit = { },
-                    //                modifier = Modifier.animateItemPlacement()
                 ) {
                     ListItem(
                         headlineContent = { Text(text = ip) },
@@ -403,9 +444,214 @@ private fun removeIpFromSharedPrefs(ipText: String, context: Context) {
     editor.putStringSet("ips", ips)
     editor.apply()
 }
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    DemoSwipeToDismiss(1)
 
+
+@Composable
+fun BluetoothDeviceList(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var pairedDevices by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
+    var hasPermission by remember { mutableStateOf(false) }
+
+    // 检查蓝牙权限
+    LaunchedEffect(Unit) {
+        hasPermission =
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            getPairedBluetoothDevices(context) { devices ->
+                pairedDevices = devices
+            }
+        }
+    }
+
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // 标题栏
+        Text(
+            text = "paired devices",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        when {
+            !hasPermission -> {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Location or bluetooth permission is required",
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
+            pairedDevices.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+//                        Icon(
+//                            imageVector = Icons.Default.BluetoothDisabled,
+//                            contentDescription = null,
+//                            modifier = Modifier.size(64.dp),
+//                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "no paired devices",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(pairedDevices) { device ->
+                        BluetoothDeviceItem(
+                            device = device,
+                            onClick = {
+                                // 处理设备点击事件
+                                // 这里可以添加连接逻辑
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+
+@Composable
+fun BluetoothDeviceItem(
+    device: BluetoothDevice,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    // 检查权限以安全地获取设备名称
+    val deviceName = remember(device) {
+        try {
+            val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+
+            if (hasPermission) {
+                device.name ?: "未知设备"
+            } else {
+                "未知设备"
+            }
+        } catch (e: SecurityException) {
+            "未知设备"
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = deviceName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = device.address,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+fun getPairedBluetoothDevices(
+    context: Context,
+    onResult: (List<BluetoothDevice>) -> Unit
+) {
+    try {
+        // 检查权限
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (!hasPermission) {
+            onResult(emptyList())
+            return
+        }
+
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val bluetoothAdapter = bluetoothManager?.adapter
+
+        if (bluetoothAdapter?.isEnabled == true) {
+            val pairedDevices = bluetoothAdapter.bondedDevices?.toList() ?: emptyList()
+            onResult(pairedDevices)
+        } else {
+            onResult(emptyList())
+        }
+    } catch (e: SecurityException) {
+        // 权限被拒绝
+        onResult(emptyList())
+    } catch (e: Exception) {
+        // 其他异常
+        onResult(emptyList())
+    }
+}
+
+

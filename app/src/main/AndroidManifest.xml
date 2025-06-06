@@ -2,6 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- 如果扫描结果用于获取位置，则需要此权限 -->
+    <!-- 或者，如果扫描不用于获取位置 (谨慎使用，需要彻底测试) -->
+    <!-- <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+                     android:usesPermissionFlags="neverForLocation" /> -->
+
+    <!-- 请求蓝牙广播/可发现权限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <!-- 请求蓝牙连接权限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
