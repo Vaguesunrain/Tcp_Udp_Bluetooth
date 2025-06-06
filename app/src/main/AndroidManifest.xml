@@ -2,18 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 声明应用使用蓝牙功能 -->
+    <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
 
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <!-- 如果扫描结果用于获取位置，则需要此权限 -->
-    <!-- 或者，如果扫描不用于获取位置 (谨慎使用，需要彻底测试) -->
-    <!-- <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-                     android:usesPermissionFlags="neverForLocation" /> -->
-
-    <!-- 请求蓝牙广播/可发现权限 -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-
-    <!-- 请求蓝牙连接权限 -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- (可选) 用于使你的设备能被其他设备发现 (广播) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -34,9 +31,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tcp_Udp">
         <activity
+            android:name=".ClassicBlueTooth"
+            android:exported="false"
+            android:label="@string/title_activity_classic_blue_tooth"
+            android:theme="@style/Theme.Tcp_Udp" />
+        <activity
             android:name=".ActivityUdp"
             android:exported="false"
-            android:theme="@style/Theme.Tcp_Udp"/>
+            android:theme="@style/Theme.Tcp_Udp" />
         <activity
             android:name=".WindowActivity"
             android:exported="false"
@@ -47,6 +49,7 @@
             android:theme="@style/Theme.Tcp_Udp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

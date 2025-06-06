@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             Tcp_UdpTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -156,35 +157,39 @@ fun TCPScreen() {
 
 @Composable
 fun BLUETOOTHScreen(){
+    val context = LocalContext.current
     Spacer(Modifier.height(10.dp))
     Text( text = "BlueTooth beta" , fontSize = 30.sp)
-    BluetoothDeviceList()
-//    Column(Modifier.wrapContentSize(Alignment.Center).fillMaxWidth(1f)
-//        ,horizontalAlignment = Alignment.CenterHorizontally){
-//        Card(modifier = Modifier
-//            .fillMaxWidth(0.8f) // 设置Card宽度为父容器的80%
-//            .fillMaxHeight(0.3f) // 设置Card高度为父容器的30%
-//            ) {
-//            Box(
-//                modifier = Modifier.fillMaxSize(),
-//                contentAlignment = Alignment.Center // 让Box内容居中
-//            ) {
-//                Button(
-//                    onClick = { /*TODO*/ },
-//                    modifier = Modifier
-//                        .fillMaxWidth(0.7f) // 设置Button宽度为Card的70%
-//                        .fillMaxHeight(0.5f) // 设置Button高度为Card的50%
-//                ) {
-//                    Text(text = "BR/EDR")
-//                }
-//            }
-//        }
-//        Card() {
-//            Button(onClick = { /*TODO*/ }) {
-//                Text(text = "BLE")
-//            }
-//        }
-//    }
+//    BluetoothDeviceList()
+    Column(Modifier.wrapContentSize(Alignment.Center).fillMaxWidth(1f)
+        ,horizontalAlignment = Alignment.CenterHorizontally){
+        Card(modifier = Modifier
+            .fillMaxWidth(0.8f) // 设置Card宽度为父容器的80%
+            .fillMaxHeight(0.3f) // 设置Card高度为父容器的30%
+            ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center // 让Box内容居中
+            ) {
+                Button(
+                    onClick = {
+                        val  intent = Intent(context, ClassicBlueTooth::class.java)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f) // 设置Button宽度为Card的70%
+                        .fillMaxHeight(0.5f) // 设置Button高度为Card的50%
+                ) {
+                    Text(text = "BR/EDR")
+                }
+            }
+        }
+        Card() {
+            Button(onClick = { /*TODO*/ }) {
+                Text(text = "BLE")
+            }
+        }
+    }
 
 }
 @Composable
@@ -516,12 +521,6 @@ fun BluetoothDeviceList(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-//                        Icon(
-//                            imageVector = Icons.Default.BluetoothDisabled,
-//                            contentDescription = null,
-//                            modifier = Modifier.size(64.dp),
-//                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "no paired devices",
