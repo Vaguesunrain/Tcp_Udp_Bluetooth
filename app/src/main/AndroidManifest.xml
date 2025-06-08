@@ -44,9 +44,16 @@
             android:exported="false"
             android:theme="@style/Theme.Tcp_Udp" />
         <activity
+            android:name=".BluetoothChatActivity"
+            android:exported="false"
+            android:label="Bluetooth Chat"
+            android:theme="@style/Theme.Tcp_Udp"
+            android:launchMode="singleTop"/>
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Tcp_Udp">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

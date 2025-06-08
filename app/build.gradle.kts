@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ame.tcp_udp"
-        minSdk = 31
+        minSdk = 29
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -53,6 +53,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose.v182)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.accompanist.permissions)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
