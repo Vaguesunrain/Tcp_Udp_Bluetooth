@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
@@ -47,6 +48,7 @@ class ClassicBlueTooth : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             Tcp_UdpTheme {
                 // 当ViewModel的uiState变化时，UI会自动重组
@@ -216,13 +218,10 @@ fun ClassicBluetoothScreen(
                 ) {
 
                     Button(onClick = onStartServerMode) {
-                        Text("开启服务器模式 (等待连接)")
+                        Text("Open Server (Wait for connecting)")
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "或",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+
                     Spacer(Modifier.height(16.dp))
 
                     MainBluetoothContent(
@@ -260,7 +259,7 @@ fun MainBluetoothContent(
             onDeviceClick = onConnectDevice
         )
 
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
+        Divider(modifier = Modifier.padding(vertical = 16.dp), thickness = 2.dp)
 
         Text("Discover Devices", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
@@ -269,7 +268,6 @@ fun MainBluetoothContent(
             Text(if (uiState.isDiscovering) "Stop Discovery" else "Start Discovery")
         }
         Spacer(modifier = Modifier.height(8.dp))
-
         if (uiState.isDiscovering) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -277,11 +275,20 @@ fun MainBluetoothContent(
                 Text("Scanning...")
             }
         }
+        else{
+            Text(" ")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Card (Modifier.fillMaxHeight(0.5f)){
 
-        DiscoveredDevicesList(
-            devices = uiState.discoveredDevices,
-            onDeviceClick = onPairDevice
-        )
+            DiscoveredDevicesList(
+                devices = uiState.discoveredDevices,
+                onDeviceClick = onPairDevice
+            )
+        }
+
+
+
     }
 }
 

@@ -4,7 +4,7 @@ import com.ame.tcp_udp.BlueTooth.BluetoothViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,6 +32,7 @@ class BluetoothChatActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val startMode = intent.getStringExtra("START_MODE")
         if (startMode == "SERVER") {
             // 如果是以服务器模式启动，则调用ViewModel开启服务器
@@ -97,8 +98,8 @@ fun ChatScreen(
             onDismissRequest = {
                 // 不允许通过点击外部来关闭弹窗，强制用户确认
             },
-            title = { Text("连接已断开") },
-            text = { Text("与 ${uiState.connectedDeviceName ?: "对方"} 的连接已断开。") },
+            title = { Text("Lose connection") },
+            text = { Text("Connection lost. Navigating back to the previous screen. ") },
             confirmButton = {
                 Button(onClick = {
                     showConnectionLostDialog = false
@@ -133,31 +134,37 @@ Scaffold(
             )
     },
     bottomBar = {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth(), // Column 填满宽度
+            horizontalAlignment = Alignment.CenterHorizontally // Column 中的内容水平居中
+        ){
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .padding(bottom = 26.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-            OutlinedTextField(
-                value = messageText,
-                onValueChange = { messageText = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Enter message") }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = {
-                    if (messageText.isNotBlank()) {
-                    onSendMessage(messageText)
-                    messageText = ""
-                    }
-                },
-                enabled = uiState.isConnected && messageText.isNotBlank()
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Enter message") }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            onSendMessage(messageText)
+                            messageText = ""
+                        }
+                    },
+                    enabled = uiState.isConnected && messageText.isNotBlank()
                 ) {
                     Icon(Icons.Default.Send, contentDescription = "Send Message")
                 }
+            }
         }
+
         }
         ) { paddingValues ->
 LazyColumn(

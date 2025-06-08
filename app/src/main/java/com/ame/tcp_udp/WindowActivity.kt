@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -130,7 +131,7 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
             var serverJob by remember { mutableStateOf<Job?>(null) }
             Row {
                 Column {
-                        Text(text = "Local IP is $theIp ")
+                        Text(text = if(SerOrClient)"Local IP is $theIp " else "Remote IP is $theIp ")
                         Text(text = "Port is $thePort")
                 }
                 Spacer(modifier.width(70.dp))
@@ -335,22 +336,24 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
 
 @Composable
 fun MessageListDisplay(messageList: List<String>) {
-    LazyColumn(
-        modifier = Modifier
-//            .heightIn(max = 400.dp) // Set the maximum height
-//            .background(Color.LightGray) // Set the background color
-            .fillMaxWidth(0.8f)
-            .fillMaxHeight(0.7f)
-    ) {
-        items(messageList) { message ->
-            Text(
-                text = message,
-                modifier = Modifier
-                    .fillMaxWidth() // Make each Text take the full width of the LazyColumn
-                    .padding(3.dp) // Add some padding around each message
-            )
+    Card {
+        LazyColumn(
+            modifier = Modifier
+
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.7f)
+        ) {
+            items(messageList) { message ->
+                Text(
+                    text = message,
+                    modifier = Modifier
+                        .fillMaxWidth() // Make each Text take the full width of the LazyColumn
+                        .padding(3.dp) // Add some padding around each message
+                )
+            }
         }
     }
+
 }
 
 
