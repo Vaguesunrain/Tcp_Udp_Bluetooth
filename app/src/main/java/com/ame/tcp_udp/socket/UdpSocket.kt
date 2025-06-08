@@ -1,4 +1,4 @@
-package com.ame.tcp_udp
+package com.ame.tcp_udp.socket
 
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope

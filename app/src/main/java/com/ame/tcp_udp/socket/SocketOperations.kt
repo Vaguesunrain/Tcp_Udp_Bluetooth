@@ -1,4 +1,4 @@
-package com.ame.tcp_udp
+package com.ame.tcp_udp.socket
 
 // 定义一个接口，包含 Client 和 Server 共有的方法
 interface SocketOperations {

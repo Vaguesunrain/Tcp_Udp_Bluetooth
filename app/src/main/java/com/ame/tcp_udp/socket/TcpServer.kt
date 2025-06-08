@@ -1,4 +1,4 @@
-package com.ame.tcp_udp
+package com.ame.tcp_udp.socket
 
 import android.util.Log
 import java.io.BufferedReader
@@ -8,7 +8,7 @@ import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
 
-class TcpServer :SocketOperations {
+class TcpServer : SocketOperations {
     private var serverSocket: ServerSocket? = null
     private var clientSocket: Socket? = null
     private var reader: BufferedReader? = null
