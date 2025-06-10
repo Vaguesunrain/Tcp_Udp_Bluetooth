@@ -77,7 +77,7 @@ fun ClassicBluetoothScreen(
     viewModel: BluetoothViewModel,
     uiState: BluetoothUiState,
     onStartServerMode: () -> Unit // 新增的回调
-    ) {
+) {
     val context = LocalContext.current
     val bluetoothManager = remember { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
     val bluetoothAdapter: BluetoothAdapter? = remember { bluetoothManager.adapter }
@@ -96,24 +96,24 @@ fun ClassicBluetoothScreen(
         }
     }
 
-//    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//        listOf(
-//            Manifest.permission.BLUETOOTH_SCAN,
-//            Manifest.permission.BLUETOOTH_CONNECT,
-//            Manifest.permission.ACCESS_FINE_LOCATION
-//        )
-//    } else {
-//        listOf(
-//            Manifest.permission.BLUETOOTH,
-//            Manifest.permission.BLUETOOTH_ADMIN,
-//            Manifest.permission.ACCESS_FINE_LOCATION
-//        )
-//    }
+    // NEW: Launcher for making the device discoverable
+    val discoverableLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_CANCELED) {
+            Toast.makeText(context, "Device is discoverable for 30 seconds", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Request to be discoverable was denied.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         // 对于 Android 12+，经典蓝牙也需要 SCAN 和 CONNECT 权限
         listOf(
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_CONNECT ,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.BLUETOOTH_ADVERTISE // Making device discoverable requires this
         )
     } else {
         // 对于 Android 11 及以下，需要旧的权限和位置权限
@@ -244,7 +244,16 @@ fun ClassicBluetoothScreen(
                         onStopDiscovery = viewModel::stopDiscovery,
                         onPairDevice = viewModel::pairDevice,
                         // 点击配对列表的设备时，仍然是尝试连接
-                        onConnectDevice = viewModel::connectToDevice
+                        onConnectDevice = viewModel::connectToDevice,
+                        // NEW: Pass the lambda to make the device discoverable
+                        onMakeDiscoverable = {
+                            // This intent prompts the user to make their device discoverable
+                            val discoverableIntent: Intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+                                // The discoverable duration is 30 seconds. The maximum is 300 seconds.
+                                putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 30)
+                            }
+                            discoverableLauncher.launch(discoverableIntent)
+                        }
                     )
                 }
             }
@@ -258,7 +267,8 @@ fun MainBluetoothContent(
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
     onPairDevice: (BluetoothDevice) -> Unit,
-    onConnectDevice: (BluetoothDevice) -> Unit
+    onConnectDevice: (BluetoothDevice) -> Unit,
+    onMakeDiscoverable: () -> Unit // NEW parameter
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -278,8 +288,20 @@ fun MainBluetoothContent(
         Text("Discover Devices", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = if (uiState.isDiscovering) onStopDiscovery else onStartDiscovery) {
-            Text(if (uiState.isDiscovering) "Stop Discovery" else "Start Discovery")
+        // MODIFIED: Use a Row for the buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = if (uiState.isDiscovering) onStopDiscovery else onStartDiscovery) {
+                Text(if (uiState.isDiscovering) "Stop Discovery" else "Start Discovery")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            // NEW: The discoverable button
+            Button(onClick = onMakeDiscoverable) {
+                Text("Make Discoverable (30s)")
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         if (uiState.isDiscovering) {
@@ -300,9 +322,6 @@ fun MainBluetoothContent(
                 onDeviceClick = onPairDevice
             )
         }
-
-
-
     }
 }
 

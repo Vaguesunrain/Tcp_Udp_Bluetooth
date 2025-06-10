@@ -13,7 +13,7 @@
         android:maxSdkVersion="30" /> <!-- Needed for location access on older devices for BLE scanning -->
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
+         />
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION"
         android:maxSdkVersion="30" />
