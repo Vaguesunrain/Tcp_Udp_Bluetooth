@@ -212,7 +212,8 @@ fun BLUETOOTHScreen(){
                     horizontalAlignment = Alignment.CenterHorizontally ) {
                     Button(
                         onClick = {
-                            //ToDo
+                            val intent = Intent(context, BleDiscoveryActivity::class.java)
+                            context.startActivity(intent)
                         },
                         modifier = Modifier
                             .fillMaxWidth(0.3f) // 设置Button宽度为Card的70%

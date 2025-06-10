@@ -96,17 +96,31 @@ fun ClassicBluetoothScreen(
         }
     }
 
+//    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//        listOf(
+//            Manifest.permission.BLUETOOTH_SCAN,
+//            Manifest.permission.BLUETOOTH_CONNECT,
+//            Manifest.permission.ACCESS_FINE_LOCATION
+//        )
+//    } else {
+//        listOf(
+//            Manifest.permission.BLUETOOTH,
+//            Manifest.permission.BLUETOOTH_ADMIN,
+//            Manifest.permission.ACCESS_FINE_LOCATION
+//        )
+//    }
     val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // 对于 Android 12+，经典蓝牙也需要 SCAN 和 CONNECT 权限
         listOf(
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.BLUETOOTH_CONNECT
         )
     } else {
+        // 对于 Android 11 及以下，需要旧的权限和位置权限
         listOf(
             Manifest.permission.BLUETOOTH,
             Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION // 经典蓝牙扫描需要位置权限
         )
     }
     val permissionState = rememberMultiplePermissionsState(permissions = requiredPermissions)

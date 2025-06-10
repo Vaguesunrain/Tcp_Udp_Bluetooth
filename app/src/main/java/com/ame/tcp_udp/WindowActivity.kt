@@ -64,8 +64,6 @@ import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import kotlin.coroutines.cancellation.CancellationException
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -185,7 +183,7 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                                                    break
                                                }
                                            }
-                                       } catch (e: java.io.IOException) {
+                                       } catch (e: IOException) {
                                            withContext(Dispatchers.Main) {
                                                messagesList.add("Client connection error/closed: ${e.message}")
                                            }

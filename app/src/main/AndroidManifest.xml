@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- 声明应用使用蓝牙功能 -->
-    <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="true" /> <!-- Request legacy Bluetooth permissions on older devices. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" /> <!-- Needed for location access on older devices for BLE scanning -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
 
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <!-- (可选) 用于使你的设备能被其他设备发现 (广播) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" /> <!-- (可选) 用于使你的设备能被其他设备发现 (广播) -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -31,6 +45,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tcp_Udp">
         <activity
+            android:name=".BleDiscoveryActivity"
+            android:exported="false"
+            android:label="@string/title_activity_ble_discovery"
+            android:theme="@style/Theme.Tcp_Udp" />
+        <activity
+            android:name=".BleChatActivity"
+            android:exported="false"
+            android:label="@string/title_activity_ble_chat"
+            android:theme="@style/Theme.Tcp_Udp" />
+        <activity
             android:name=".ClassicBlueTooth"
             android:exported="false"
             android:label="@string/title_activity_classic_blue_tooth"
@@ -47,13 +71,12 @@
             android:name=".BluetoothChatActivity"
             android:exported="false"
             android:label="Bluetooth Chat"
-            android:theme="@style/Theme.Tcp_Udp"
-            android:launchMode="singleTop"/>
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Tcp_Udp" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Tcp_Udp">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

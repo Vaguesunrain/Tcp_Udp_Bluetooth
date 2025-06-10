@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">TCP_UDP_Bluetooth Tool</string>
     <string name="title_activity_classic_blue_tooth">ClassicBlueTooth</string>
+    <string name="title_activity_ble_chat">BleChatActivity</string>
+    <string name="title_activity_ble_discovery">BleDiscoveryActivity</string>
 </resources>
