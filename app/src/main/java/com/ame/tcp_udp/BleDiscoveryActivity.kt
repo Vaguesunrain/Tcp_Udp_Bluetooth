@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,11 +39,9 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 class BleDiscoveryActivity : ComponentActivity() {
 
-    // 使用我们为BLE创建的ViewModel单例
     private val viewModel: BleViewModel by lazy {
         BleViewModel.getInstance(application)
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -61,15 +60,26 @@ class BleDiscoveryActivity : ComponentActivity() {
                         startActivity(intent)
                     },
                     onConnectToDevice = { device ->
-                        // 连接到选定的设备，并导航到聊天界面
                         viewModel.connectToDevice(device)
-                        val intent = Intent(this, BleChatActivity::class.java).apply {
-                            // 客户端模式不需要传递额外参数
-                        }
+                    } ,
+                    onGoToChat = {
+                        val intent = Intent(this, BleChatActivity::class.java)
                         startActivity(intent)
                     }
                 )
             }
+        }
+    }
+    override fun onResume() {
+        super.onResume()
+        // 这里的逻辑是：如果当前没有活动连接，并且没有正在扫描，
+        // 那么我们认为列表可能是过时的，需要清空。
+        val currentState = viewModel.uiState.value
+        if (!currentState.isConnected && !currentState.isConnecting && !currentState.isScanning) {
+            // 从聊天界面返回时，通常满足这些条件。
+            // 这将确保用户每次回到发现页时，看到的都是一个干净的界面，
+            // 鼓励他们重新扫描以获取最新的设备列表。
+            viewModel.clearScannedDevices()
         }
     }
 }
@@ -81,7 +91,8 @@ fun BleDiscoveryScreen(
     viewModel: BleViewModel,
     uiState: BleUiState,
     onStartServerMode: () -> Unit,
-    onConnectToDevice: (BluetoothDevice) -> Unit
+    onConnectToDevice: (BluetoothDevice) -> Unit,
+    onGoToChat: () -> Unit
 ) {
     val context = LocalContext.current
     val bluetoothManager = remember { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
@@ -136,7 +147,6 @@ fun BleDiscoveryScreen(
                 return@Scaffold
             }
 
-            // 权限请求UI (基本不变)
             if (!permissionState.allPermissionsGranted) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -149,7 +159,6 @@ fun BleDiscoveryScreen(
                     }
                 }
             }
-            // 蓝牙开启请求UI (基本不变)
             else if (!isBluetoothEnabled) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Bluetooth is currently disabled.")
@@ -162,14 +171,14 @@ fun BleDiscoveryScreen(
                     }
                 }
             }
-            // 主内容
             else {
                 BleMainContent(
                     uiState = uiState,
-                    onStartScan = viewModel::startClientMode, // 注意：这里调用的是startClientMode
-                    onStopScan = viewModel::disconnect, // 断开连接也可以用来停止扫描
-                    onConnectDevice = onConnectToDevice,
-                    onStartServerMode = onStartServerMode
+                    onStartScan = viewModel::startClientMode,
+                    onStopScan = viewModel::stopScan,
+                    onConnectDevice = onConnectToDevice, // 【传递】
+                    onStartServerMode = onStartServerMode,
+                    onGoToChat = onGoToChat // 【传递】
                 )
             }
         }
@@ -182,7 +191,8 @@ fun BleMainContent(
     onStartScan: () -> Unit,
     onStopScan: () -> Unit,
     onConnectDevice: (BluetoothDevice) -> Unit,
-    onStartServerMode: () -> Unit
+    onStartServerMode: () -> Unit,
+    onGoToChat: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -216,18 +226,20 @@ fun BleMainContent(
 
         // 显示扫描到的设备列表
         ScannedDevicesList(
-            devices = uiState.scannedDevices,
-            onDeviceClick = onConnectDevice
+            uiState = uiState,
+            onDeviceClick = onConnectDevice,
+            onChatClick = onGoToChat
         )
     }
 }
 
 @Composable
 fun ScannedDevicesList(
-    devices: List<BluetoothDevice>,
-    onDeviceClick: (BluetoothDevice) -> Unit
+    uiState: BleUiState,
+    onDeviceClick: (BluetoothDevice) -> Unit,
+    onChatClick: () -> Unit
 ) {
-    if (devices.isEmpty()) {
+    if (uiState.scannedDevices.isEmpty() && !uiState.isScanning) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -236,29 +248,44 @@ fun ScannedDevicesList(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(items = devices, key = { it.address }) { device ->
-                // 使用我们之前为经典蓝牙写的DeviceItem，它足够通用
-                BleDeviceItem(device = device, onDeviceClick = { onDeviceClick(device) })
+            items(items = uiState.scannedDevices, key = { it.address }) { device ->
+                val isConnecting = uiState.connectingDevice?.address == device.address
+                val isConnected = uiState.connectedDevice?.address == device.address
+
+                BleDeviceItem(
+                    device = device,
+                    isConnecting = isConnecting,
+                    isConnected = isConnected,
+                    onConnectClick = {
+                        if (!isConnected && !isConnecting) {
+                            onDeviceClick(device)
+                        }
+                    },
+                    onChatClick = if (isConnected) onChatClick else null
+                )
                 Divider()
             }
         }
     }
 }
-
 @SuppressLint("MissingPermission")
 @Composable
 fun BleDeviceItem(
     device: BluetoothDevice,
-    onDeviceClick: () -> Unit
+    isConnecting: Boolean,
+    isConnected: Boolean,
+    onConnectClick: () -> Unit,
+    onChatClick: (() -> Unit)? // 回调可以是null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onDeviceClick)
+            .clickable(onClick = onConnectClick) // 点击行以连接
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween // 左右对齐
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) { // 让文字部分占据可用空间
             Text(
                 text = device.name ?: "Unknown Device",
                 style = MaterialTheme.typography.bodyLarge,
@@ -268,6 +295,17 @@ fun BleDeviceItem(
                 text = device.address,
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (isConnecting) {
+                Text(text = "Connecting...", color = MaterialTheme.colorScheme.primary)
+            } else if (isConnected) {
+                Text(text = "Connected", color = Color(0xFF008000)) // 绿色
+            }
+        }
+        // 如果已连接并且有回调，则显示 "Chat" 按钮
+        if (isConnected && onChatClick != null) {
+            Button(onClick = onChatClick) {
+                Text("Chat")
+            }
         }
     }
 }

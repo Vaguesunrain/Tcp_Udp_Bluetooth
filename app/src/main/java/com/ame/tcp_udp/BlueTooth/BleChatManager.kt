@@ -10,7 +10,6 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
 @SuppressLint("MissingPermission")
 class BleChatManager(
     private val context: Context,
@@ -56,19 +55,21 @@ class BleChatManager(
         gattServer = bluetoothManager.openGattServer(context, gattServerCallback)
         val service = BluetoothGattService(BleConstants.SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
-        // 写特征 (Central -> Peripheral)
+        // 【修复1】写特征 (Central -> Peripheral) - 添加读权限
         val writeChar = BluetoothGattCharacteristic(
             BleConstants.CHARACTERISTIC_WRITE_UUID,
-            BluetoothGattCharacteristic.PROPERTY_WRITE,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
+            BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_READ,
+            BluetoothGattCharacteristic.PERMISSION_WRITE or BluetoothGattCharacteristic.PERMISSION_READ
         )
-        // 通知特征 (Peripheral -> Central)
+
+        // 【修复2】通知特征 (Peripheral -> Central) - 确保正确的属性和权限
         val notifyChar = BluetoothGattCharacteristic(
             BleConstants.CHARACTERISTIC_NOTIFY_UUID,
-            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_READ,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
-        // 为通知特征添加描述符
+
+        // 【修复3】为通知特征添加描述符 - 确保客户端可以订阅通知
         val configDescriptor = BluetoothGattDescriptor(
             BleConstants.CLIENT_CHARACTERISTIC_CONFIG_UUID,
             BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
@@ -78,7 +79,8 @@ class BleChatManager(
         service.addCharacteristic(writeChar)
         service.addCharacteristic(notifyChar)
 
-        gattServer?.addService(service)
+        val addServiceResult = gattServer?.addService(service)
+        Log.d("BLE_SERVER", "Add service result: $addServiceResult")
     }
 
     private fun startAdvertising() {
@@ -95,6 +97,7 @@ class BleChatManager(
             .build()
 
         advertiser?.startAdvertising(settings, data, advertiseCallback)
+        Log.d("BLE_SERVER", "Started advertising")
     }
 
     // --- Client (Central) 模式方法 ---
@@ -121,37 +124,62 @@ class BleChatManager(
         gattClient = device.connectGatt(context, false, gattClientCallback)
     }
 
+    fun stopScan() {
+        scanner?.stopScan(scanCallback)
+        onStateChange(ManagerState.ScanStopped)
+    }
+
     // --- 通用方法 ---
     fun sendMessage(message: String) {
         val bytes = message.toByteArray(Charsets.UTF_8)
+        Log.d("BLE_SEND", "Attempting to send message: $message")
 
         // 作为Client(中心)发送
         gattClient?.let { gatt ->
             writeCharacteristic?.let { char ->
+                Log.d("BLE_SEND", "Sending as client to server")
                 char.value = bytes
                 char.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                gatt.writeCharacteristic(char)
-            }
+                val writeResult = gatt.writeCharacteristic(char)
+                Log.d("BLE_SEND", "Client write result: $writeResult")
+            } ?: Log.e("BLE_SEND", "Write characteristic is null!")
         }
 
         // 作为Server(外围)发送
         gattServer?.let { server ->
             connectedDevice?.let { device ->
+                Log.d("BLE_SEND", "Sending as server to client")
                 val notifyChar = server.getService(BleConstants.SERVICE_UUID)
                     ?.getCharacteristic(BleConstants.CHARACTERISTIC_NOTIFY_UUID)
-                notifyChar?.value = bytes
-                server.notifyCharacteristicChanged(device, notifyChar, false)
-            }
+                if (notifyChar != null) {
+                    notifyChar.value = bytes
+                    val notifyResult = server.notifyCharacteristicChanged(device, notifyChar, false)
+                    Log.d("BLE_SEND", "Server notify result: $notifyResult")
+                } else {
+                    Log.e("BLE_SEND", "Notify characteristic not found!")
+                }
+            } ?: Log.e("BLE_SEND", "No connected device!")
         }
     }
 
     fun disconnect() {
-        gattClient?.disconnect()
-        gattClient?.close()
-        gattClient = null
+        Log.d("BLE_DISCONNECT", "Initiating disconnect...")
 
-        connectedDevice?.let { gattServer?.cancelConnection(it) }
-        connectedDevice = null
+        // 客户端断开
+        gattClient?.let { client ->
+            Log.d("BLE_DISCONNECT", "Disconnecting as client...")
+            client.disconnect()
+            // 不要立即close，让回调处理
+        }
+
+        // 服务端断开
+        gattServer?.let { server ->
+            connectedDevice?.let { device ->
+                Log.d("BLE_DISCONNECT", "Disconnecting as server from device: ${device.address}")
+                // 【关键修复】使用正确的服务端断开方法
+                server.cancelConnection(device)
+            }
+        }
     }
 
     fun close() {
@@ -163,30 +191,81 @@ class BleChatManager(
     }
 
     // --- 回调区域 ---
-    private val advertiseCallback = object : AdvertiseCallback() {}
+    private val advertiseCallback = object : AdvertiseCallback() {
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+            Log.d("BLE_ADV", "Advertising started successfully")
+        }
+
+        override fun onStartFailure(errorCode: Int) {
+            Log.e("BLE_ADV", "Advertising failed with error: $errorCode")
+            onStateChange(ManagerState.Error("Advertising failed: $errorCode"))
+        }
+    }
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            Log.d("BLE_SERVER", "Connection state changed: status=$status, newState=$newState")
             coroutineScope.launch(Dispatchers.Main) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    advertiser?.stopAdvertising(advertiseCallback) // stop broadcast
                     connectedDevice = device
+                    Log.d("BLE_SERVER", "Client connected: ${device.name ?: device.address}")
                     onStateChange(ManagerState.Connected(device))
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     connectedDevice = null
+                    gattServer?.close()
+                    gattServer = null // 将引用置空，防止后续误用
+                    Log.d("BLE_SERVER", "Client disconnected")
                     onStateChange(ManagerState.Disconnected)
                 }
             }
         }
 
-        override fun onCharacteristicWriteRequest(device: BluetoothDevice, requestId: Int, characteristic: BluetoothGattCharacteristic, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray) {
+        override fun onCharacteristicWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            characteristic: BluetoothGattCharacteristic,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray
+        ) {
+
             if (characteristic.uuid == BleConstants.CHARACTERISTIC_WRITE_UUID) {
                 if (responseNeeded) {
-                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                    val response = gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                    Log.d("BLE_SERVER", "Sent response: $response")
                 }
+
+                // 处理接收到的消息
                 val message = value.toString(Charsets.UTF_8)
+                Log.d("BLE_SERVER", "Received message: $message")
                 coroutineScope.launch(Dispatchers.Main) {
                     onStateChange(ManagerState.MessageReceived(message))
                 }
+            } else {
+                if (responseNeeded) {
+                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, 0, null)
+                }
+                Log.w("BLE_SERVER", "Unexpected characteristic write: ${characteristic.uuid}")
+            }
+        }
+
+        override fun onDescriptorWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            descriptor: BluetoothGattDescriptor,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray
+        ) {
+            Log.d("BLE_SERVER", "Descriptor write request from ${device.address}")
+            if (descriptor.uuid == BleConstants.CLIENT_CHARACTERISTIC_CONFIG_UUID) {
+                if (responseNeeded) {
+                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                }
+                Log.d("BLE_SERVER", "Client subscribed to notifications")
             }
         }
     }
@@ -194,43 +273,100 @@ class BleChatManager(
     private val gattClientCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val device = gatt.device
+            Log.d("BLE_CLIENT", "Connection state changed: status=$status, newState=$newState")
             coroutineScope.launch(Dispatchers.Main) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    Log.d("BLE_CLIENT", "Connected to server, discovering services...")
                     gatt.discoverServices()
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    Log.d("BLE_CLIENT", "Disconnected from server")
                     onStateChange(ManagerState.Disconnected)
                     gattClient?.close()
                     gattClient = null
+                    writeCharacteristic = null
                 }
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            val service = gatt.getService(BleConstants.SERVICE_UUID)
-            if (service == null) {
-                Log.w("BLE", "Service not found!")
+            Log.d("BLE_CLIENT", "Services discovered, status: $status")
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                Log.e("BLE_CLIENT", "Service discovery failed")
                 gatt.disconnect()
                 return
             }
-            writeCharacteristic = service.getCharacteristic(BleConstants.CHARACTERISTIC_WRITE_UUID)
-            val notifyChar = service.getCharacteristic(BleConstants.CHARACTERISTIC_NOTIFY_UUID)
 
-            gatt.setCharacteristicNotification(notifyChar, true)
-            val descriptor = notifyChar.getDescriptor(BleConstants.CLIENT_CHARACTERISTIC_CONFIG_UUID)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-            } else {
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gatt.writeDescriptor(descriptor)
+            val service = gatt.getService(BleConstants.SERVICE_UUID)
+            if (service == null) {
+                Log.e("BLE_CLIENT", "Service not found!")
+                gatt.disconnect()
+                return
             }
-            coroutineScope.launch(Dispatchers.Main) {
-                onStateChange(ManagerState.Connected(gatt.device))
+
+            writeCharacteristic = service.getCharacteristic(BleConstants.CHARACTERISTIC_WRITE_UUID)
+            if (writeCharacteristic != null) {
+                Log.d("BLE_CLIENT", "SUCCESS: Write Characteristic found!")
+            } else {
+                Log.e("BLE_CLIENT", "FAILURE: Write Characteristic NOT found!")
+                gatt.disconnect()
+                return
+            }
+            // 设置通知
+            val notifyChar = service.getCharacteristic(BleConstants.CHARACTERISTIC_NOTIFY_UUID)
+            if (notifyChar != null) {
+                val setNotificationResult = gatt.setCharacteristicNotification(notifyChar, true)
+                Log.d("BLE_CLIENT", "Set notification result: $setNotificationResult")
+
+                // 写入描述符以启用通知
+                val descriptor = notifyChar.getDescriptor(BleConstants.CLIENT_CHARACTERISTIC_CONFIG_UUID)
+                if (descriptor != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val writeDescResult = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                        Log.d("BLE_CLIENT", "Write descriptor result (API 33+): $writeDescResult")
+                    } else {
+                        descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                        val writeDescResult = gatt.writeDescriptor(descriptor)
+                        Log.d("BLE_CLIENT", "Write descriptor result (Legacy): $writeDescResult")
+                    }
+                } else {
+                    Log.e("BLE_CLIENT", "Descriptor not found!")
+                    gatt.disconnect()
+                }
+            } else {
+                Log.e("BLE_CLIENT", "Notify characteristic not found!")
+                gatt.disconnect()
             }
         }
 
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            Log.d("BLE_CLIENT", "Descriptor write completed, status: $status")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                if (descriptor.uuid == BleConstants.CLIENT_CHARACTERISTIC_CONFIG_UUID) {
+                    Log.d("BLE_CLIENT", "Notification subscription successful. Connection fully ready.")
+                    coroutineScope.launch(Dispatchers.Main) {
+                        onStateChange(ManagerState.Connected(gatt.device))
+                    }
+                }
+            } else {
+                Log.e("BLE_CLIENT", "Failed to write descriptor, status: $status")
+                gatt.disconnect()
+            }
+        }
+
+        // 写特征完成的回调处理
+        override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d("BLE_CLIENT", "Message sent successfully")
+            } else {
+                Log.e("BLE_CLIENT", "Failed to send message, status: $status")
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             if (characteristic.uuid == BleConstants.CHARACTERISTIC_NOTIFY_UUID) {
                 val message = characteristic.value.toString(Charsets.UTF_8)
+                Log.d("BLE_CLIENT", "Received notification: $message")
                 coroutineScope.launch(Dispatchers.Main) {
                     onStateChange(ManagerState.MessageReceived(message))
                 }
@@ -240,11 +376,16 @@ class BleChatManager(
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            if (result.device.name != null) {
-                coroutineScope.launch(Dispatchers.Main) {
-                    onStateChange(ManagerState.DeviceFound(result.device))
-                }
+            Log.d("BLE_SCAN", "Found device: ${result.device.name ?: "Unknown"} (${result.device.address})")
+            coroutineScope.launch(Dispatchers.Main) {
+                onStateChange(ManagerState.DeviceFound(result.device))
             }
+        }
+
+        override fun onScanFailed(errorCode: Int) {
+            super.onScanFailed(errorCode)
+            Log.e("BLE_SCAN", "Scan failed with error code: $errorCode")
+            onStateChange(ManagerState.Error("Scan failed with code: $errorCode"))
         }
     }
 }
