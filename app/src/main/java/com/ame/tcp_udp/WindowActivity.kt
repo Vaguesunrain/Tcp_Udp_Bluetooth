@@ -1,4 +1,6 @@
 package com.ame.tcp_udp
+import android.content.ContentResolver
+import android.content.ContentValues
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -19,7 +21,12 @@ import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.wifi.WifiManager
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,9 +63,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.util.*
 import kotlin.coroutines.cancellation.CancellationException
-
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class WindowActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +110,7 @@ class WindowActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String ,thePort: Int) {
+    val context = LocalContext.current
 //    注意SerOrClient=1时是服务器
     Scaffold(
         topBar = {
@@ -265,7 +277,7 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                             body.close()
                             withContext(Dispatchers.Main) {
                                 Log.i("TCP_DISCONNECT", "Connection closed by user.")
-                                // messagesList.clear() // 可以在这里清空，或者在连接时清空
+                                // messagesList.clear()
                             }
                         }
                     }
@@ -326,7 +338,8 @@ fun WorkUI( modifier: Modifier = Modifier ,SerOrClient: Boolean , theIp: String 
                 Spacer(modifier = Modifier.padding(20.dp))
                 Button(modifier= Modifier
                     .width(120.dp)
-                    .height(50.dp), onClick = { /*TODO*/ }) {
+                    .height(50.dp), onClick = { saveTextToPublicDownloads(context , messagesList ) }) {
+
                     Text(text = "Save text")
                 }
             }
@@ -425,3 +438,64 @@ fun getLocalIpAddress(context: Context): String? {
     return null
 }
 
+fun saveTextToPublicDownloads(
+    context: Context,
+    messageList: List<String>,
+    suggestedFileName: String = "app_data" // 默认文件名
+) {
+    val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+    val currentTime = dateFormat.format(Date())
+    val finalFileName = "${suggestedFileName}_${currentTime}.txt"
+    val mimeType = "text/plain"
+
+    val contentValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, finalFileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+
+        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+    }
+
+    val resolver: ContentResolver = context.contentResolver
+    var uri: Uri? = null
+
+    try {
+        uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+        if (uri != null) {
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                messageList.forEach { message ->
+                    outputStream.write("$message\n".toByteArray())
+                }
+            } ?: run {
+                Toast.makeText(context, "outputStream error", Toast.LENGTH_SHORT).show()
+                uri.let { resolver.delete(it, null, null) }
+                return
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentValues.clear() // 清除之前的 ContentValues
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+            }
+            Toast.makeText(context, "File saved, Downloads/$finalFileName", Toast.LENGTH_LONG).show()
+            // Log.d("FileSaver", "文件已成功写入到: $uri")
+
+        } else {
+            Toast.makeText(context, "create file URI error", Toast.LENGTH_SHORT).show()
+        }
+
+    } catch (e: IOException) {
+        e.printStackTrace()
+        if (uri != null) {
+            resolver.delete(uri, null, null)
+        }
+        Toast.makeText(context, "File save error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+    } catch (e: SecurityException) {
+        e.printStackTrace()
+        Toast.makeText(context, "No permission: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+    }
+}
