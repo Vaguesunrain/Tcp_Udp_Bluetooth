@@ -2,6 +2,7 @@ package com.ame.tcp_udp
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -30,16 +32,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -70,11 +77,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ame.tcp_udp.ui.theme.Tcp_UdpTheme
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,6 +108,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Greeting( modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val BluetoothVector = ImageVector.vectorResource(id = R.drawable.bluetooth_24px)
     Tcp_UdpTheme {
         var selectedItem by remember { mutableIntStateOf(0) }
@@ -106,6 +118,7 @@ fun Greeting( modifier: Modifier = Modifier) {
         )
         Scaffold(modifier = Modifier.fillMaxSize(),
             topBar = { // <--- Moved TopAppBar here
+                var expanded by remember { mutableStateOf(false) } // 菜单展开状态
                 TopAppBar(
                     title = {
                         Text(
@@ -116,6 +129,67 @@ fun Greeting( modifier: Modifier = Modifier) {
                                 else -> "Networking Demo" // Default title
                             }
                         )
+                    } ,
+                    actions = {
+                        // 右侧操作区域
+                        Box(
+                            modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+                                .padding(end = 8.dp, top = 4.dp)// 确保菜单从右侧展开
+                        ) {
+                            IconButton(onClick = { expanded = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert, // 更多选项图标
+                                    contentDescription = "More options"
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                // 使用 widthIn 替代 fillMaxWidth，提供更好的宽度控制
+                                // 最小宽度确保内容可见，最大宽度防止过宽
+                                modifier = Modifier.widthIn(min = 180.dp, max = 280.dp)
+                            ) {
+                                // 第一个菜单项：Source code
+                                DropdownMenuItem(
+                                    text = {
+                                        // 改变 Text 的样式，使其看起来可点击
+                                        Text(
+                                            text = "Source code",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                color = MaterialTheme.colorScheme.primary, // 使用主题的主色，通常是蓝色
+                                                textDecoration = TextDecoration.Underline, // 添加下划线
+                                                fontWeight = FontWeight.Bold // 加粗字体
+                                            )
+                                        )
+                                    },
+                                    onClick = {
+                                        // 点击后首先收起菜单
+                                        expanded = false
+
+                                        val url = "https://github.com/Vaguesunrain/Tcp_Udp_Bluetooth"
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent) // 启动浏览器
+                                    }
+                                )
+
+                                // 分隔线
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) // 增加垂直间距，让分隔线更清晰
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "If there's a bug, please click on 'source code' above and raise an issue.",
+                                            style = MaterialTheme.typography.bodySmall, // 稍小一点的字体
+                                            textAlign = TextAlign.Start // 文本左对齐，确保多行文本美观
+                                        )
+                                    },
+                                    onClick = {
+
+                                    }
+                                )
+                            }
+                        }
                     }
                 )
             },
