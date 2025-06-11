@@ -26,10 +26,10 @@ class BleChatManager(
         data class Error(val message: String) : ManagerState()
         data class Connecting(val device: BluetoothDevice) : ManagerState()
         data class Connected(val device: BluetoothDevice) : ManagerState()
-        object Disconnected : ManagerState()
+        data object Disconnected : ManagerState()
         data class MessageReceived(val message: String) : ManagerState()
-        object ScanStarted : ManagerState()
-        object ScanStopped : ManagerState()
+        data object ScanStarted : ManagerState()
+        data object ScanStopped : ManagerState()
         data class DeviceFound(val device: BluetoothDevice) : ManagerState()
     }
 
@@ -277,7 +277,6 @@ class BleChatManager(
 
     private val gattClientCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            val device = gatt.device
             Log.d("BLE_CLIENT", "Connection state changed: status=$status, newState=$newState")
             coroutineScope.launch(Dispatchers.Main) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
