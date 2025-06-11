@@ -16,6 +16,11 @@ class BleChatManager(
     private val coroutineScope: CoroutineScope,
     private val onStateChange: (ManagerState) -> Unit
 ) {
+
+    companion object {
+        // A unique command to prevent accidental disconnection if a user types "DISCONNECT"
+        const val DISCONNECT_MESSAGE = "CUSTOM_BLE_DISCONNECT_COMMAND_A7B3"
+    }
     // --- 定义状态类，用于通知ViewModel ---
     sealed class ManagerState {
         data class Error(val message: String) : ManagerState()
@@ -367,8 +372,15 @@ class BleChatManager(
             if (characteristic.uuid == BleConstants.CHARACTERISTIC_NOTIFY_UUID) {
                 val message = characteristic.value.toString(Charsets.UTF_8)
                 Log.d("BLE_CLIENT", "Received notification: $message")
-                coroutineScope.launch(Dispatchers.Main) {
-                    onStateChange(ManagerState.MessageReceived(message))
+                if (message == DISCONNECT_MESSAGE) {
+                    Log.i("BLE_CLIENT", "Disconnect command received from server. Initiating disconnect.")
+                    // The client now initiates its own disconnection sequence.
+                    disconnect()
+                } else {
+                    // It's a regular chat message, notify the ViewModel to display it.
+                    coroutineScope.launch(Dispatchers.Main) {
+                        onStateChange(ManagerState.MessageReceived(message))
+                    }
                 }
             }
         }

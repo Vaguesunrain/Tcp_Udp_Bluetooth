@@ -222,7 +222,7 @@ fun BLUETOOTHScreen(){
                         Text(text = "BLE")
                     }
                     Spacer(Modifier.height(20.dp))
-                    Text(text = "Bluetooth Low Energy\n\nnow is not supported" , fontSize = 20.sp)
+                    Text(text = "Bluetooth Low Energy" , fontSize = 20.sp)
                 }
 
             }

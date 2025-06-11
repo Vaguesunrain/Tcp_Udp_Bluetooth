@@ -26,6 +26,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -321,6 +323,14 @@ fun MainBluetoothContent(
                 devices = uiState.discoveredDevices,
                 onDeviceClick = onPairDevice
             )
+        }
+        Spacer(modifier = Modifier.height(18.dp))
+        val scrollState = rememberScrollState()
+        Card (Modifier.fillMaxSize().verticalScroll(scrollState),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Transparent // 设置为透明
+            )){
+            Text(text = "Readme(You are supposed to read 1-4.):\n\n        1.Find each other:one clicks Start Discovery and another clicks Make Discoverable.\n        2.Click name in Discover Devices to pair.\n       3.CLick name in Pair Devices to try connect.The other app should open Server\n       4.Both modes release sources when disconnect.")
         }
     }
 }

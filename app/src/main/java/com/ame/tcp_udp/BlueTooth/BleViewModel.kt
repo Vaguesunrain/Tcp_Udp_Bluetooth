@@ -79,6 +79,13 @@ class BleViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun disconnect() {
+        // If this device is the server, send a disconnect command to the client first.
+        if (_uiState.value.isServer && _uiState.value.isConnected) {
+            Log.d(TAG, "Server initiating disconnect. Sending command to client.")
+            // This sends the message over BLE but does NOT add it to the local UI chat list.
+            bleChatManager?.sendMessage(BleChatManager.DISCONNECT_MESSAGE)
+        }
+        // Proceed with the actual disconnection for both client and server.
         bleChatManager?.disconnect()
     }
 

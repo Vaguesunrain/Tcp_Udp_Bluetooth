@@ -23,6 +23,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -239,33 +241,46 @@ fun ScannedDevicesList(
     onDeviceClick: (BluetoothDevice) -> Unit,
     onChatClick: () -> Unit
 ) {
-    if (uiState.scannedDevices.isEmpty() && !uiState.isScanning) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("No devices found. Make sure the server is advertising.")
-        }
-    } else {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(items = uiState.scannedDevices, key = { it.address }) { device ->
-                val isConnecting = uiState.connectingDevice?.address == device.address
-                val isConnected = uiState.connectedDevice?.address == device.address
+    Card(Modifier.fillMaxHeight(0.5f)){
+        if (uiState.scannedDevices.isEmpty() && !uiState.isScanning) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No devices found. Make sure the server is advertising.")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(items = uiState.scannedDevices, key = { it.address }) { device ->
+                    val isConnecting = uiState.connectingDevice?.address == device.address
+                    val isConnected = uiState.connectedDevice?.address == device.address
 
-                BleDeviceItem(
-                    device = device,
-                    isConnecting = isConnecting,
-                    isConnected = isConnected,
-                    onConnectClick = {
-                        if (!isConnected && !isConnecting) {
-                            onDeviceClick(device)
-                        }
-                    },
-                    onChatClick = if (isConnected) onChatClick else null
-                )
-                Divider()
+                    BleDeviceItem(
+                        device = device,
+                        isConnecting = isConnecting,
+                        isConnected = isConnected,
+                        onConnectClick = {
+                            if (!isConnected && !isConnecting) {
+                                onDeviceClick(device)
+                            }
+                        },
+                        onChatClick = if (isConnected) onChatClick else null
+                    )
+                    Divider()
+                }
             }
         }
+    }
+    Spacer(Modifier.height(40.dp))
+    val scrollState = rememberScrollState()
+    Card (
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent // 设置为透明
+        )){
+        Text(text = "Readme(You are supposed to read 1-5.):\n\n        1.Server mode -> gatt server.\n\n        2.If server is disconnected and closed,this app's client don't know. I let server send 'DISCONNECT' before it closes so that client can react and close.\n\n       3.The Client shut down the server but it knows,so it  send  nothing.\n\n        4.How to use:Server make itself discoverable,client scans.Client clicks device and wait showing connected.\n\n       5.Both modes release sources when disconnect.")
     }
 }
 @SuppressLint("MissingPermission")
